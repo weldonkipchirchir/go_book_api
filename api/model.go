@@ -15,6 +15,11 @@ type JsonResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 func RespondJSON(c *gin.Context, status int, message string, data any) {
 	response := JsonResponse{
 		Status:  status,

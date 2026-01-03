@@ -1,16 +1,24 @@
+/*
+Package api provides RESTful handlers and middleware for managing a library of books.
+It includes functionality for creating, reading, updating, and deleting books, as well as generating JWT tokens for authentication.
+*/
 package api
 
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
 
+// InitDB initializes the database connection using environment variables.
+// It loads the database configuration from a .env file and migrates the Book schema.
 func InitDB() {
 	// if err := godotenv.Load(); err != nil {
 	// 	log.Println("No .env file found, using system environment variables")
@@ -34,6 +42,8 @@ func InitDB() {
 	}
 }
 
+// CreateBook handles the creation of a new book in the database.
+// It expects a JSON payload with book details and responds with the created book.
 func CreateBook(c *gin.Context) {
 	var book Book
 
@@ -49,6 +59,8 @@ func CreateBook(c *gin.Context) {
 	RespondJSON(c, http.StatusCreated, "Book created successfully", book)
 }
 
+// GetBooks retrieves all books from the database.
+// It responds with a list of books.
 func GetBooks(c *gin.Context) {
 	var books []Book
 	if err := DB.Find(&books).Error; err != nil {
@@ -58,6 +70,8 @@ func GetBooks(c *gin.Context) {
 	RespondJSON(c, http.StatusOK, "Books retrieved successfully", books)
 }
 
+// GetBookByID retrieves a book by its ID from the database.
+// It responds with the book details if found.
 func GetBookByID(c *gin.Context) {
 	id := c.Param("id")
 	var book Book
@@ -68,6 +82,8 @@ func GetBookByID(c *gin.Context) {
 	RespondJSON(c, http.StatusOK, "Book retrieved successfully", book)
 }
 
+// UpdateBook updates an existing book in the database.
+// It expects a JSON payload with updated book details and responds with the updated book.
 func UpdateBook(c *gin.Context) {
 	id := c.Param("id")
 	var book Book
@@ -86,6 +102,8 @@ func UpdateBook(c *gin.Context) {
 	RespondJSON(c, http.StatusOK, "Book updated successfully", book)
 }
 
+// DeleteBook deletes a book by its ID from the database.
+// It responds with a success message if the deletion is successful.
 func DeleteBook(c *gin.Context) {
 	id := c.Param("id")
 	var book Book
@@ -99,4 +117,32 @@ func DeleteBook(c *gin.Context) {
 		return
 	}
 	RespondJSON(c, http.StatusOK, "Book deleted successfully", nil)
+}
+
+// GenerateJWT generates a JWT token for authenticated users.
+// It expects a JSON payload with username and password, and responds with the token if credentials are valid.
+func GenerateJWT(c *gin.Context) {
+	var loginRequest loginRequest
+	if err := c.ShouldBindJSON(&loginRequest); err != nil {
+		RespondJSON(c, http.StatusBadRequest, "Invalid request body", nil)
+		return
+	}
+
+	if loginRequest.Username != "admin" || loginRequest.Password != "password" {
+		RespondJSON(c, http.StatusUnauthorized, "Invalid credentials", nil)
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": loginRequest.Username,
+		"exp":      jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
+	})
+
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		RespondJSON(c, http.StatusInternalServerError, "Failed to generate token", nil)
+		return
+	}
+
+	RespondJSON(c, http.StatusOK, "Token generated successfully", gin.H{"token": tokenString})
 }

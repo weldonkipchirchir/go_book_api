@@ -14,12 +14,17 @@ func main() {
 	api.InitDB()
 	r := gin.Default()
 
+	r.POST("/token", api.GenerateJWT)
+
 	// Define routes
-	r.POST("/books", api.CreateBook)
-	r.GET("/books", api.GetBooks)
-	r.GET("/books/:id", api.GetBookByID)
-	r.PUT("/books/:id", api.UpdateBook)
-	r.DELETE("/books/:id", api.DeleteBook)
+	protected := r.Group("/", api.JWTAuthMiddleware())
+	{
+		protected.POST("/books", api.CreateBook)
+		protected.GET("/books", api.GetBooks)
+		protected.GET("/books/:id", api.GetBookByID)
+		protected.PUT("/books/:id", api.UpdateBook)
+		protected.DELETE("/books/:id", api.DeleteBook)
+	}
 	// Start the server
 	port := os.Getenv("PORT")
 	if port == "" {
